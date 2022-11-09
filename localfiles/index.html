@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1.0, maximum-scale=1.0, user-scalable=0, shrink-to-fit=no" />
+    <title>Check if Mapbox GL JS is supported</title>
+    <meta
+          name="viewport"
+          content="initial-scale=1,maximum-scale=1,user-scalable=no"
+          />
+    <link
+          href="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css"
+          rel="stylesheet"
+          />
+    <link
+          rel="stylesheet"
+          href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css"
+          />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <script src="https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+          href="https://fonts.googleapis.com/css2?family=Roboto&display=swap"
+          rel="stylesheet"
+          />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      #map {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 100%;
+      }
+      #instructions {
+        position: absolute;
+        top: 30px;
+        left: 30px;
+        margin: 2px;
+        padding: 2px;
+        max-height: 100%;
+        max-width: 80%;
+        background-color: #fff;
+        overflow-y: scroll;
+        font-family: "Roboto", sans-serif;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <div id="instructions"></div>
+    <script>
+      mapboxgl.accessToken =
+        "pk.eyJ1IjoicmFtYWNoYW5kcmFubWFyaW0iLCJhIjoiY2t5bnd3NnkwM3U4bDJwbzh6cG5yYzMzbyJ9.4K6cHBzjDXigcw3BDgTu-w";
+      let map = null;
+      let start=[];
+      async function createMap(coorinates) {
+        start=coorinates;
+        map = new mapboxgl.Map({
+          container: "map",
+          style: "mapbox://styles/mapbox/streets-v11",
+          center: coorinates,
+          zoom: 10,
+        });
+        map.on("load", () => {
+          map.addLayer({
+            id: "point",
+            type: "circle",
+            source: {
+              type: "geojson",
+              data: {
+                type: "FeatureCollection",
+                features: [
+                  {
+                    type: "Feature",
+                    properties: {},
+                    geometry: {
+                      type: "Point",
+                      coordinates: coorinates,
+                    },
+                  },
+                ],
+              },
+            },
+            paint: {
+              "circle-radius": 7,
+              "circle-color": "#3887be",
+            },
+          });
+        });
+      }
+      async function getRoute(end) {
+        const query = await fetch(
+          `https://api.mapbox.com/directions/v5/mapbox/cycling/${start[0]},${start[1]};${end[0]},${end[1]}?steps=true&geometries=geojson&access_token=${mapboxgl.accessToken}`,
+          { method: "GET" }
+        );
+        const json = await query.json();
+        const data = json.routes[0];
+        const route = data.geometry.coordinates;
+        const geojson = {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "LineString",
+            coordinates: route,
+          },
+        };
+        // if the route already exists on the map, we'll reset it using setData
+        if (map.getSource("route")) {
+          map.getSource("route").setData(geojson);
+        }
+        // otherwise, we'll make a new request
+        else {
+          map.addLayer({
+            id: "route",
+            type: "line",
+            source: {
+              type: "geojson",
+              data: geojson,
+            },
+            layout: {
+              "line-join": "round",
+              "line-cap": "round",
+            },
+            paint: {
+              "line-color": "#3887be",
+              "line-width": 5,
+              "line-opacity": 0.75,
+            },
+          });
+        }
+
+        let extraDivHeight;        
+        if(window.screen.height<700){ //
+          extraDivHeight = "300px";
+        }
+        else if(window.screen.height>=700 && window.screen.height<850){
+          extraDivHeight = "250px";
+        }
+        else {
+          extraDivHeight = "100px";
+        }
+
+        const instructions = document.getElementById("instructions");
+        const steps = data.legs[0].steps;
+        let tripInstructions = "";
+        for (const step of steps) {
+          tripInstructions += `<li>${step.maneuver.instruction}</li>`;
+        }
+
+
+        instructions.innerHTML = `<button type="button" class="btn-link collapsed" data-toggle="collapse" data-target="#demo"> <span class="glyphicon glyphicon-info-sign"></span></button>
+<div id="demo" class="collapse">
+<p><strong>Trip duration: ${Math.floor(
+          data.duration / 60
+        )} min </strong></p><ol>${tripInstructions}</ol><div style = "height: ${extraDivHeight}" ></div></div>`;
+      }
+    </script>
+  </body>
+</html>

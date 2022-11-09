@@ -1,0 +1,53 @@
+<html>
+<head>
+  <script src="https://kendo.cdn.telerik.com/2017.2.504/js/jquery.min.js"></script>
+  <script src="https://kendo.cdn.telerik.com/2017.2.504/js/kendo.all.min.js"></script>
+  <script>
+    function generate(htmlString, info, params) {
+      const deviceInfo = info;
+      document.getElementById('_parentNode').innerHTML = htmlString;
+      kendo.drawing
+        .drawDOM(document.body,
+            {
+                allPages: true,
+                forcePageBreak: ".page-break", // add this class to each element where you want manual page break
+                margin: { 
+                  top: `${params.top}${params.unit}`,
+                  right: `${params.right}${params.unit}`,
+                  bottom: `${params.bottom}${params.unit}`,
+                  left: `${params.left}${params.unit}`
+                },
+                paperSize: params.format,
+                scale: 1,
+                keepTogether: ".prevent-split",
+                landscape: (params.orientation === 'landscape'),
+//                template: '<div class="footer" style = "margin-bottom:10;"><table><tr><td><h3>Amway Indonesia</h3></td><td class="footer-address"><small>Call Center: 021-57980800</small></td></tr><tr><td><small><strong>Customer Service Email Address:</strong> customer.service@amway.id</small></td><td class="footer-address"><small>Tower EightyEight @Kasablanka, 23rd Floor, Jl. Casablanca Raya Kav.88. Jakarta Selantan 12870</small></td></tr></table></div>'
+            })
+        .then(function (group) {
+            kendo.drawing.pdf.toDataURL(group, function (dataURL) {
+              var arr = [];              
+              try {                
+                if (deviceInfo.name.toLowerCase() === 'iphone' || deviceInfo.name.toLowerCase() === 'ipad') {
+                    arr.push(dataURL);
+                    kony.evaluateJavaScriptInNativeContext("_createFile", JSON.stringify(arr));
+                } else if (deviceInfo.name.toLowerCase() === 'android') {
+                    arr.push(dataURL);
+                    kony.evaluateJavaScriptInNativeContext("_createFile", JSON.stringify(arr));
+                } else {
+                    kendo.saveAs({
+                        dataURI: dataURL,
+                        fileName: `${params.filename}.pdf`
+                    });                  
+                }
+              } catch (e) {
+                alert(e.message);
+              }
+            });
+        });
+    }
+  </script>
+</head>
+<body>
+  <div id="_parentNode" style="position:relative;top:0;left:0;width:100%;height:100%" />
+</body>
+</html>
